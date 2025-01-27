@@ -317,61 +317,74 @@ export default function Profilepage({ details }) {
                 <div className="fac-card">
                     <EducationManagement />
                                     </div>
+                                    <div className="fac-card">
+                <TeachingEngagementManagement/>
+                            </div>
+                            <div className="fac-card">
+                <MembershipManagement/>
+                        </div>
+                        <div className="fac-card">
+                <PhdCandidateManagement/>
+                        </div>
+                        <div className="fac-card">
+                <ProjectSupervisionManagement/>
+                        </div>
+                        <div className="fac-card">
+                <SponsoredProjectManagement/>
+                        </div>
+                        <div className="fac-card">
+                <ConsultancyProjectManagement/>
+                            </div>
+                            <div className="fac-card">
+                    <InternshipManagement/>
+                        </div>
+                        <div className="fac-card">
+                <StartupManagement/>
+                            </div>
+                        <div className="fac-card">
+                <IPRManagement/>
+                        </div>
+                        <div className="fac-card">
+                <PatentManagement/>
+                            </div>
+                            <div className="fac-card">
+                <JournalPaperManagement/>
+                            </div>
+                            <div className="fac-card">
+                <ConferencePaperManagement/>
+                        </div>
+                        <div className="fac-card">
+                <BookChapterManagement/>
+                            </div>
+                            <div className="fac-card">
+                <TextbookManagement/>
+                            </div>
+                            <div className="fac-card">
+                <EditedBookManagement/>
+                        </div>
                 <div className="fac-card">
                     <WorkshopConferenceManagement/>
                                 </div>
-                <div className="fac-card">
+               
+                                <div className="fac-card">
                     <InstituteActivityManagement/>
                         </div>
                 <div className="fac-card">
                     <DepartmentActivityManagement/>
                     </div>
-                <div className="fac-card">
-                    <InternshipManagement/>
-                        </div>
-                <div className="fac-card">
-                <TeachingEngagementManagement/>
-                            </div>
-                <div className="fac-card">
-                <ProjectSupervisionManagement/>
-                        </div>
-                <div className="fac-card">
-                <TextbookManagement/>
-                            </div>
-                <div className="fac-card">
-                <EditedBookManagement/>
-                        </div>
-                <div className="fac-card">
-                <BookChapterManagement/>
-                            </div>
-                <div className="fac-card">
-                <SponsoredProjectManagement/>
-                        </div>
-                <div className="fac-card">
-                <ConsultancyProjectManagement/>
-                            </div>
-                <div className="fac-card">
-                <IPRManagement/>
-                        </div>
-                <div className="fac-card">
-                <StartupManagement/>
-                            </div>
-                <div className="fac-card">
-                <MembershipManagement/>
-                        </div>
-                <div className="fac-card">
-                <PatentManagement/>
-                            </div>
-                <div className="fac-card">
-                <PhdCandidateManagement/>
-                        </div>
-                <div className="fac-card">
-                <JournalPaperManagement/>
-                            </div>
-                <div className="fac-card">
-                <ConferencePaperManagement/>
-                        </div>
-
+                
+                
+              
+                
+               
+                
+               
+                
+               
+               
+              
+               
+               
                 
 
 
