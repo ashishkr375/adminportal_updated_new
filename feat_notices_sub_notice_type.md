@@ -1,9 +1,6 @@
 ## Adding `notice_sub_type` to notices table
 
-A migration has been added to include the `notice_sub_type` column in the `notices` table. The `create` API now supports this new field and performs validation.
-
-**Migration:**  
-Run the following SQL to update your notices schema:
+A new column `notice_sub_type` has been added to the `notices` table to support sub-types for certain notice types. The following SQL migration is required:
 
 ```sql
 ALTER TABLE notices ADD COLUMN notice_sub_type VARCHAR(255) NULL;
@@ -13,11 +10,69 @@ ALTER TABLE notices ADD COLUMN notice_sub_type VARCHAR(255) NULL;
 
 ## API Changes
 
-### 1. `/api/create` (POST)
+Three endpoints now fully support `notice_sub_type` with validation:
+
+---
+
+### 1. `/api/notice` (GET)
 
 #### Description
 
-Supports creation of notices with an additional, validated `notice_sub_type` field. If the given `notice_type` requires a sub-type, the request must include a valid `notice_sub_type`. Error handling is included for missing or invalid sub-types.
+You can now filter notices by both `type` and `notice_sub_type` (both are case-insensitive and trimmed). If both parameters are provided, only notices matching **both** the type and sub-type will be returned.
+
+#### Example: Valid Request
+
+```
+GET http://localhost:3000/api/notice?type=JOb&notice_sub_type=rEGULARTEACHING
+```
+
+#### Example: Successful Response (`200 OK`)
+
+```json
+[
+  {
+    "id": "12345",
+    "title": "Holiday Announcement",
+    "timestamp": "1775655248700",
+    "openDate": "1717200000000",
+    "closeDate": "1717545600000",
+    "important": 1,
+    "isVisible": 1,
+    "attachments": [
+      {
+        "name": "HolidayList.pdf",
+        "url": "https://example.com/HolidayList.pdf"
+      }
+    ],
+    "email": "admin@nitp.ac.in",
+    "isDept": 0,
+    "notice_link": "https://example.com/notices/holiday",
+    "notice_type": "JOB",
+    "updatedBy": "shivamg.ug24.cs@nitp.ac.in",
+    "updatedAt": "1775655248700",
+    "department": "CSE",
+    "notice_sub_type": "REGULARTEACHING"
+  }
+]
+```
+
+- If results are found, an array of notices is returned (`200 OK`) as above.
+- Notice that both `type` and `notice_sub_type` accept any casing but are normalized to UPPERCASE in responses.
+- If the `type` is invalid, you get:
+
+```json
+{
+  "message": "Invalid type parameter"
+}
+```
+
+---
+
+### 2. `/api/create` (POST)
+
+#### Description
+
+Allows creation of notices with the optional `notice_sub_type` field. If a given `notice_type` requires a sub-type, a valid `notice_sub_type` **must** be provided or the API responds with an error.
 
 #### Example: Valid Request Payload
 
@@ -53,8 +108,6 @@ Supports creation of notices with an additional, validated `notice_sub_type` fie
 }
 ```
 
----
-
 #### Example: Invalid Request Payload (Missing Required `notice_sub_type`)
 
 ```json
@@ -77,9 +130,7 @@ Supports creation of notices with an additional, validated `notice_sub_type` fie
   "email": "admin@institute.ac.in"
 }
 ```
-
-#### Example: Error API Response
-
+Returns:
 ```json
 {
   "message": "Invalid or missing notice_sub_type for notice_type: job"
@@ -88,11 +139,11 @@ Supports creation of notices with an additional, validated `notice_sub_type` fie
 
 ---
 
-### 2. `/api/update` (PUT)
+### 3. `/api/update` (PUT)
 
 #### Description
 
-Supports updating notices with the `notice_sub_type` field. Updates are performed at the notice level with full authorization checks. The API validates that if the given `notice_type` requires a sub-type, a valid `notice_sub_type` must be included.
+Allows updating notices including the `notice_sub_type` field. If the updated notice’s `notice_type` requires a sub-type, a valid `notice_sub_type` **must** be included in the payload, else the update will fail.
 
 #### Example: Valid Request Payload
 
@@ -111,7 +162,7 @@ Supports updating notices with the `notice_sub_type` field. Updates are performe
       {
         "name": "job_description.pdf",
         "url": "https://docs.cloud.google.com/faculty-job-posting-2024.pdf"
-      },
+      }
     ],
     "important": 1,
     "department": "AR",
@@ -136,8 +187,6 @@ Supports updating notices with the `notice_sub_type` field. Updates are performe
 }
 ```
 
----
-
 #### Example: Invalid Request Payload (Missing Required `notice_sub_type`)
 
 ```json
@@ -154,9 +203,7 @@ Supports updating notices with the `notice_sub_type` field. Updates are performe
   "type": "notice"
 }
 ```
-
-#### Example: Error API Response
-
+Returns:
 ```json
 {
   "message": "Invalid or missing notice_sub_type for notice_type: job"
@@ -167,13 +214,11 @@ Supports updating notices with the `notice_sub_type` field. Updates are performe
 
 #### Authorization Notes
 
-- **SUPER_ADMIN**: Can update any notice
-- **ACADEMIC_ADMIN**: Can only update notices with `notice_type` = `'academics'`
-- **DEPT_ADMIN**: Can only update notices with `notice_type` = `'department'` matching their department
-
-The update automatically sets `updatedAt` to the current timestamp.
+- **SUPER_ADMIN:** Can update any notice.
+- **ACADEMIC_ADMIN:** Can only update notices with `notice_type = 'academics'`.
+- **DEPT_ADMIN:** Can only update notices with `notice_type = 'department'` and matching their own department.
+- All updates set `updatedAt` to the current timestamp automatically.
 
 ---
 
-Just ensure your request payload includes a valid `notice_sub_type` string whenever it is required by the `notice_type` you are submitting or updating.  
-The examples above show both success and error responses for reference.
+> Ensure all payloads provide a valid `notice_sub_type` string whenever required by the `notice_type`. See examples above for both success and error outputs.
