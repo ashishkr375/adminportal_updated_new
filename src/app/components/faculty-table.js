@@ -56,7 +56,7 @@ export function FacultyTable() {
       const res = await fetch('/api/faculty?type=all')
       if (!res.ok) throw new Error('Failed to fetch')
       const data = await res.json()
-      setRows(data)
+      setRows(Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []))
     } catch (error) {
       console.error('Error fetching faculty:', error)
     } finally {
@@ -136,6 +136,10 @@ export function FacultyTable() {
     const emailMatch = row.email?.toLowerCase().includes(emailSearch.toLowerCase())
     return nameMatch && emailMatch
   })
+
+  useEffect(() => {
+    setPage(0)
+  }, [nameSearch, emailSearch])
 
   if (loading) {
     return (
