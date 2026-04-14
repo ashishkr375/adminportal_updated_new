@@ -65,19 +65,50 @@ export async function getCachedUserProfile(email) {
 /**
  * Invalidate profile cache (when profile is updated)
  */
-export async function invalidateUserProfile(email) {
-  try {
-    const redis = getRedisClient();
-    const key = `profile:v1:${email}`;
 
-    await redis.del(key);
+export async function invalidateProfileIfNeeded(type, params) {
+  // Tables that are part of the profile data
+  const profileTables = [
+    'profile',
+    'about_me',
+    'education',
+    'work_experience',
+    'journal_papers',
+    'conference_papers',
+    'book_chapters',
+    'edited_books',
+    'textbooks',
+    'patents',
+    'sponsored_projects',
+    'consultancy_projects',
+    'project_supervision',
+    'phd_candidates',
+    'internships',
+    'teaching_engagement',
+    'workshops_conferences',
+    'institute_activities',
+    'department_activities',
+    'memberships',
+    'ipr',
+    'startups',
+    'conference_session_chairs',
+    'international_journal_reviewers',
+    'talks_and_lectures',
+    'honours_awards',
+    'special_lectures',
+    'visits_abroad',
+    'editorial_boards',
+    'mooc_courses'
+  ];
 
-    console.log(`[CACHE] INVALIDATE | email=${email}`);
+  // Check if this update type affects the profile
+  if (profileTables.includes(type) && params.email) {
+    await invalidateUserProfile(params.email);
+    console.log(`✓ Profile cache invalidated for ${params.email} (${type})`);
     return true;
-  } catch (error) {
-    console.error('[CACHE] INVALIDATE ERROR:', error);
-    return false;
   }
+
+  return false;
 }
 
 /**

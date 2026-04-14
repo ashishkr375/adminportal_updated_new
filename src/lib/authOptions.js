@@ -19,7 +19,6 @@ export const authOptions = {
     callbacks: {
       async signIn({ user, account, profile }) {
         try {
-          console.log("LOGIN EMAIL:", profile.email)
           const results = await query(
             `SELECT * FROM user WHERE email = ?`,
             [profile.email]

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/authOptions'
-import { invalidateUserProfile } from '@/lib/profileCache'
+import { invalidateProfileIfNeeded } from '@/lib/profileCache'
 
 export async function PUT(request) {
   try {
@@ -63,8 +63,7 @@ export async function PUT(request) {
           updateValues
       )
       // INVALIDATE CACHE AFTER UPDATE
-      await invalidateUserProfile(params.email);
-      console.log(`✓ Cache invalidated for ${params.email}`);
+      await invalidateProfileIfNeeded(type, params);
       
       return NextResponse.json(result)
     }
@@ -144,7 +143,8 @@ export async function PUT(request) {
             params.data.department || null,
             params.data.id
         ]
-      )      
+      )   
+      await invalidateProfileIfNeeded(type, params);   
       return NextResponse.json(result)
     }
 
@@ -183,6 +183,7 @@ export async function PUT(request) {
               params.data.id
             ]
           )
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(eventResult)
 
         case 'patents':
@@ -198,6 +199,7 @@ export async function PUT(request) {
                   params.id 
               ]
           );
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(patentResult);
 
         case 'innovation':
@@ -224,6 +226,7 @@ export async function PUT(request) {
               params.data.id
             ]
           )
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(innovationResult)
 
         case 'news':
@@ -252,6 +255,7 @@ export async function PUT(request) {
               params.data.id
             ]
           )
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(newsResult)
 
         case 'user':
@@ -275,6 +279,7 @@ export async function PUT(request) {
                 session.user.email
               ]
             )
+            await invalidateProfileIfNeeded(type, params);
             return NextResponse.json(socialResult)
           } else {
             const {
@@ -318,6 +323,7 @@ export async function PUT(request) {
                 email
               ]
             )
+            await invalidateProfileIfNeeded(type, params);
             return NextResponse.json(facultyResult)
           }
       }
@@ -356,6 +362,7 @@ export async function PUT(request) {
               params.email
             ]
           ); 
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(phdResult)
 
         case 'journal_papers': {
@@ -435,7 +442,7 @@ export async function PUT(request) {
                 ORDER BY jp.publication_year DESC`,
                 [params.id]
               );
-
+              await invalidateProfileIfNeeded(type, params);
               return NextResponse.json({
                 success: true,
                 message: 'Journal paper and collaborators updated successfully',
@@ -515,7 +522,7 @@ export async function PUT(request) {
              GROUP BY cp.id`,
             [params.id]
           )
-
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json({ conference: conferencesWithCollaborators[0] || null })
 
 
@@ -549,6 +556,7 @@ export async function PUT(request) {
               await query(`INSERT INTO textbooks_collaborater(textbooks_id, email) VALUES (?, ?)`, [params.id, email])
             }
           }
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(textbookResult)
 
         case 'edited_books':
@@ -589,7 +597,7 @@ export async function PUT(request) {
              GROUP BY eb.id`,
             [params.id]
           )
-
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json({ editedBook: updatedEditedBooks[0] || null })
 
         case 'book_chapters':
@@ -625,6 +633,7 @@ export async function PUT(request) {
               await query(`INSERT INTO book_chapters_collaborater(book_chapters_id, email) VALUES (?, ?)`, [params.id, email])
             }
           }
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(chapterResult)
 
         // Projects
@@ -668,6 +677,7 @@ export async function PUT(request) {
               )
             }
           }
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(sponsoredResult)
 
         case 'consultancy_projects':
@@ -701,6 +711,7 @@ export async function PUT(request) {
               await query(`INSERT INTO consultancy_projects_collaborater(consultancy_projects_id, email) VALUES (?, ?)`, [params.id, email])
             }
           }
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(consultancyResult)
 
         // IPR and Startups
@@ -735,6 +746,7 @@ export async function PUT(request) {
               await query(`INSERT INTO ipr_collaborater(ipr_id, email) VALUES (?, ?)`, [params.id, email])
             }
           }
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(iprResult)
 
         case 'startups':
@@ -764,6 +776,7 @@ export async function PUT(request) {
               await query(`INSERT INTO startups_collaborater(startups_id, email) VALUES (?, ?)`, [params.id, email])
             }
           }
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(startupResult)
 
         // Teaching and Activities
@@ -800,6 +813,7 @@ export async function PUT(request) {
               params.email
             ]
           )
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(teachingResult)
 
         case 'memberships':
@@ -820,6 +834,7 @@ export async function PUT(request) {
                   params.id
               ]
           );
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(membershipUpdateResult);
 
         case 'project_supervision':
@@ -845,6 +860,7 @@ export async function PUT(request) {
                   params.email
               ]
           );
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(supervisionResult);
 
         case 'workshops_conferences':
@@ -876,6 +892,7 @@ export async function PUT(request) {
               await query(`INSERT INTO workshops_conferences_collaborater(workshops_conferences_id, email) VALUES (?, ?)`, [params.id, email])
             }
           }
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(workshopResult)
 
         case 'institute_activities':
@@ -895,6 +912,7 @@ export async function PUT(request) {
               params.email
             ]
           )
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(instituteResult)
 
         case 'department_activities':
@@ -914,6 +932,7 @@ export async function PUT(request) {
               params.email
             ]
           )
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(departmentResult)
 
         case 'internships':
@@ -939,6 +958,7 @@ export async function PUT(request) {
               params.email
             ]
           )
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(internshipResult)
 
         case 'education':
@@ -951,6 +971,7 @@ export async function PUT(request) {
              WHERE id = ? AND email = ?`,
             [params.certification, params.institution, params.passing_year,params.specialization, params.id, params.email]
           )
+          await invalidateProfileIfNeeded(type, params);
           return NextResponse.json(educationResult)
       }
     }
