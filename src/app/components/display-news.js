@@ -7,12 +7,14 @@ import {
     TableBody,
     TableCell,
     TableContainer,
+    TablePagination,
     TableHead,
     TableRow,
     Paper,
     Tooltip,
     Chip
 } from '@mui/material'
+import TablePaginationActions from './common-props/TablePaginationActions'
 import Button from '@mui/material/Button'
 import {
     Edit as EditIcon,
@@ -151,6 +153,9 @@ const DataDisplay = (props) => {
     const [details, setDetails] = useState(props.data)
     const [filterQuery, setFilterQuery] = useState(null)
     const [addModal, setAddModal] = useState(false)
+    const [page, setPage] = useState(0)
+    const [rowsPerPage, setRowsPerPage] = useState(15)
+    
     const addModalOpen = () => {
         setAddModal(true)
     }
@@ -167,13 +172,15 @@ const DataDisplay = (props) => {
                     Accept: 'application/json',
                 },
                 body: JSON.stringify({
+                    from: page * rowsPerPage,
+                    to: (page + 1) * rowsPerPage,
                     type:"all"
                 }),
             })
                 .then((res) => res.json())
                 .then((data) => {
-                    console.log(data)
-                    setDetails(data)
+                    // console.log(data.data);
+                     setDetails(data.data)
                 })
                 .catch((err) => console.log(err))
         } else {
@@ -184,17 +191,21 @@ const DataDisplay = (props) => {
                     Accept: 'application/json',
                 },
                 body: JSON.stringify({
+                    page: page * rowsPerPage,
+                    to: (page + 1) * rowsPerPage,
                     ...filterQuery,
                     type:"range"
                 }),
             })
                 .then((res) => res.json())
                 .then((data) => {
-                    setDetails(data)
+                    console.log(data.data);
+
+                     setDetails(data.data)
                 })
                 .catch((err) => console.log(err))
         }
-    }, [filterQuery])
+    }, [filterQuery,page,rowsPerPage])
 
     // Modal state management
     const [editModal, setEditModal] = useState(false)
@@ -298,6 +309,22 @@ const DataDisplay = (props) => {
                     </Table>
                 </TableContainer>
             </Paper>
+
+                        <Box mt={3}>
+                                <TablePagination
+                                component="div"
+                                count={-1}
+                                page={page}
+                                onPageChange={(e, newPage) => setPage(newPage)}
+                                    rowsPerPage={rowsPerPage}
+                                onRowsPerPageChange={(e) => {
+                                    setRowsPerPage(parseInt(e.target.value, 10));
+                                    setPage(0);
+                                }}
+                                rowsPerPageOptions={[15, 25, 50, 100]}
+                                    ActionsComponent={TablePaginationActions}
+                                />
+                        </Box>
 
             {/* Modals */}
             <AddForm handleClose={handleCloseAddModal} modal={addModal} />
