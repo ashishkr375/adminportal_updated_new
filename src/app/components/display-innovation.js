@@ -1,23 +1,16 @@
 import {
     IconButton,
-    TableFooter,
-    TableRow,
+    TablePagination,
     Typography,
     Button,
     Grid,
     Paper,
     Box,
-    Link,
 } from '@mui/material'
-import { TablePagination } from '@mui/base/TablePagination';
 import {
     Edit,
-    Flag,
     Description,
-    KeyboardArrowLeft,
-    KeyboardArrowRight,
-    FirstPage,
-    LastPage,
+    Link as LinkIcon,
 } from '@mui/icons-material'
 import React, { useState, useEffect } from 'react'
 import { AddForm } from './innovation-props/add-form'
@@ -25,7 +18,7 @@ import { EditForm } from './innovation-props/edit-form'
 import { useSession } from 'next-auth/react'
 import { DescriptionModal } from './common-props/description-modal'
 import Filter from './common-props/filter'
-import PropTypes from 'prop-types'
+import TablePaginationActions from './common-props/TablePaginationActions'
 
 const paperSx = {
     flexGrow: 1,
@@ -54,77 +47,15 @@ const iconSx = {
 
 const attachedSx = {
     '& > span': { paddingLeft: '8px' },
-    '& > span:first-child': {
+    '& > span:first-of-type': {
         paddingLeft: 0,
     },
 }
 
-const paginationRootSx = {
-    flexShrink: 0,
-    marginRight: '20px',
-}
-
-function TablePaginationActions(props) {
-    const { count, page, rowsPerPage, onPageChange } = props
-
-    const handleFirstPageButtonClick = (event) => {
-        onPageChange(event, 0)
-    }
-
-    const handleBackButtonClick = (event) => {
-        onPageChange(event, page - 1)
-    }
-
-    const handleNextButtonClick = (event) => {
-        onPageChange(event, page + 1)
-    }
-
-    const handleLastPageButtonClick = (event) => {
-        onPageChange(event, Math.max(0, Math.ceil(count / rowsPerPage) - 1))
-    }
-
-    return (
-        <Box sx={paginationRootSx}>
-            <IconButton
-                onClick={handleFirstPageButtonClick}
-                disabled={page === 0}
-                aria-label="first page"
-            >
-                <FirstPage />
-            </IconButton>
-            <IconButton
-                onClick={handleBackButtonClick}
-                disabled={page === 0}
-                aria-label="previous page"
-            >
-                <KeyboardArrowLeft />
-            </IconButton>
-            <IconButton
-                onClick={handleNextButtonClick}
-                aria-label="next page"
-            >
-                <KeyboardArrowRight />
-            </IconButton>
-            <IconButton
-                onClick={handleLastPageButtonClick}
-                aria-label="last page"
-            >
-                <LastPage />
-            </IconButton>
-        </Box>
-    )
-}
-
-TablePaginationActions.propTypes = {
-    count: PropTypes.number.isRequired,
-    onChangePage: PropTypes.func.isRequired,
-    page: PropTypes.number.isRequired,
-    rowsPerPage: PropTypes.number.isRequired,
-}
-
 const DataDisplay = (props) => {
-    const {data:session,status} = useSession()
-    const [details, setDetails] = useState(props.data)
+    const {data:session} = useSession()
+    const [details, setDetails] = useState(Array.isArray(props.data) ? props.data : [])
+    const [total, setTotal] = useState(Array.isArray(props.data) ? props.data.length : 0)
     const [filterQuery, setFilterQuery] = useState(null)
 
     // const [rows, setRows] = useState(props.data);
@@ -168,8 +99,8 @@ const DataDisplay = (props) => {
             })
                 .then((res) => res.json())
                 .then((data) => {
-                    console.log(data)
-                    setDetails(data)
+                    setDetails(Array.isArray(data?.data) ? data.data : [])
+                    setTotal(Number(data?.total) || 0)
                 })
                 .catch((err) => console.log(err))
         } else {
@@ -188,8 +119,8 @@ const DataDisplay = (props) => {
             })
                 .then((res) => res.json())
                 .then((data) => {
-                    // console.log(data)
-                    setDetails(data)
+                    setDetails(Array.isArray(data?.data) ? data.data : [])
+                    setTotal(Number(data?.total) || 0)
                 })
                 .catch((err) => console.log(err))
         }
@@ -203,11 +134,11 @@ const DataDisplay = (props) => {
     }, [page, rowsPerPage, filterQuery])
 
     const Innovation = ({ detail }) => {
-        let openDate = new Date(detail.timestamp)
-        let dd = openDate.getDate()
-        let mm = openDate.getMonth() + 1
-        let yyyy = openDate.getFullYear()
-        openDate = dd + '/' + mm + '/' + yyyy
+        const dateValue = detail.openDate ?? detail.timestamp ?? detail.updatedAt
+        const parsedDate = new Date(dateValue)
+        const openDate = Number.isNaN(parsedDate.getTime())
+            ? 'N/A'
+            : `${parsedDate.getDate()}/${parsedDate.getMonth() + 1}/${parsedDate.getFullYear()}`
 
         const [editModal, setEditModal] = useState(false)
         const [descriptionModal, setDescriptionModal] = useState(false)
@@ -262,7 +193,7 @@ const DataDisplay = (props) => {
                                                     alignItems: 'center'
                                                 }}
                                             >
-                                                <Link style={{ marginRight: '5px' }} />
+                                                <LinkIcon style={{ marginRight: '5px' }} />
                                                 {img.caption}
                                             </a>
                                         </span>
@@ -295,8 +226,8 @@ const DataDisplay = (props) => {
                         modal={descriptionModal}
                     />
                 </Grid>
-                {session.user.role == 1 ||
-                session.user.email === detail.email ? (
+                {session?.user?.role == 1 ||
+                session?.user?.email === detail.email ? (
                     <Grid item xs={6} sm={2} lg={1}>
                         <Paper
                             sx={{ ...itemPaperSx, textAlign: 'center', cursor: 'pointer' }}
@@ -344,24 +275,18 @@ const DataDisplay = (props) => {
                     return <Innovation key={row.id || index} detail={row} />
                 })}
             </Grid>
-            <TableFooter>
-                <TableRow>
-                    <TablePagination
-                        rowsPerPageOptions={[15, 25, 50, 100]}
-                        colSpan={7}
-                        count={rowsPerPage * page + details.length}
-                        rowsPerPage={rowsPerPage}
-                        page={page}
-                        selectprops={{
-                            inputProps: { 'aria-label': 'rows per page' },
-                            native: true,
-                        }}
-                        onPageChange={handleChangePage}
-                        onRowsPerPageChange={handleChangeRowsPerPage}
-                        ActionsComponent={TablePaginationActions}
-                    />
-                </TableRow>
-            </TableFooter>
+            <Box mt={3}>
+                <TablePagination
+                    component="div"
+                    count={total}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    rowsPerPage={rowsPerPage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    rowsPerPageOptions={[15, 25, 50, 100]}
+                    ActionsComponent={TablePaginationActions}
+                />
+            </Box>
         </>
     )
 }

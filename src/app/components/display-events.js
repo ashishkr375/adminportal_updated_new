@@ -178,30 +178,32 @@ const Event = ({ detail }) => {
 }
 
 const DataDisplay = ({ data }) => {
-    const { data: session } = useSession()
+    const { data: session,status } = useSession()
     const [details, setDetails] = useState([])
     const [initialData, setInitialData] = useState(data)
     const [filterQuery, setFilterQuery] = useState(null)
     const [addModal, setAddModal] = useState(false)
-
+    const [page, setPage] = useState(0)
+    const [rowsPerPage, setRowsPerPage] = useState(15)
+    
     useEffect(() => {
         if (!filterQuery) {
             fetch('/api/events', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    Accept: 'application/json',
                 },
                 body: JSON.stringify({
+                    from: page * rowsPerPage,
+                    to: (page + 1) * rowsPerPage,
                     type: 'all'
                 })
             })
             .then(res => res.json())
-            .then(data => {
-                const sortedData = [...data].sort((a, b) => 
-                    new Date(b.updatedAt || b.timestamp) - new Date(a.updatedAt || a.timestamp)
-                );
-                setDetails(sortedData);
-                setInitialData(data); // Store for filtering
+            .then((data) => {
+                    // console.log(data.data);
+                     setDetails(data.data)
             })
             .catch(err => console.error('Error fetching events:', err));
         } else if (filterQuery && initialData.length > 0) {
@@ -218,7 +220,7 @@ const DataDisplay = ({ data }) => {
             const sortedFilterData = filteredData.sort((a, b) => new Date(b.updatedAt || b.timestamp) - new Date(a.updatedAt || a.timestamp));
             setDetails(sortedFilterData);
         }
-    }, [filterQuery]); // Remove initialData from dependencies
+    }, [page, rowsPerPage, filterQuery, initialData, session]); // Remove initialData from dependencies
 
     return (
         <Box sx={{ p: 3 }}>
@@ -268,6 +270,22 @@ const DataDisplay = ({ data }) => {
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            <Box mt={3}>
+                <TablePagination
+                component="div"
+                count={-1}
+                page={page}
+                onPageChange={(e, newPage) => setPage(newPage)}
+                    rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(e) => {
+                    setRowsPerPage(parseInt(e.target.value, 10));
+                    setPage(0);
+                }}
+                rowsPerPageOptions={[15, 25, 50, 100]}
+                    ActionsComponent={TablePaginationActions}
+                />
+            </Box>
 
             <AddForm 
                 modal={addModal}

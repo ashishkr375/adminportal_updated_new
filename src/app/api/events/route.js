@@ -84,6 +84,7 @@ export async function POST(request) {
 
     const limit = Math.max(1, Math.min(50, to - from))
     const offset = Math.max(0, from)
+    const page = Math.floor(offset / limit) + 1
 
     let results = []
     let total = 0
@@ -137,7 +138,7 @@ export async function POST(request) {
       }
     })
 
-      return NextResponse.json({
+    return NextResponse.json({
       page,
       limit,
       offset,
