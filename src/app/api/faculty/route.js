@@ -348,15 +348,6 @@ export async function GET(request) {
           )
         }
     }
-    // Return response with CORS headers
-    return NextResponse.json(results, {
-      headers: {
-        'Access-Control-Allow-Origin': isAllowedOrigin ? origin : allowedOrigins[0],
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Credentials': 'true', // If you need to support credentials
-      },
-    })
 
   } catch (error) {
     console.error('API Error:', error)
