@@ -87,15 +87,16 @@ export async function PUT(request) {
 
 
 
-      const canUpdateNotice =
-        session.user.role === "SUPER_ADMIN" ||
-        (session.user.role === "ACADEMIC_ADMIN" &&
-          noticeData.notice_type === "academics") ||
-        (session.user.role === "DEPT_ADMIN" &&
-          noticeData.notice_type === "department" &&
-          noticeData.department === session.user.department);
-
-
+      const canUpdateNotice = 
+        session.user.role === 'SUPER_ADMIN' ||
+        (session.user.role === 'ACADEMIC_ADMIN' && noticeData.notice_type === 'academics') ||
+        (session.user.role === 'DEPT_ADMIN' && 
+         noticeData.notice_type === 'department' && 
+         noticeData.department === session.user.department) ||
+        (session.user.role === 'TENDER_NOTICE_ADMIN' && noticeData.notice_type === 'tender')
+      
+      console.log('Can update notice:', canUpdateNotice)
+      
       if (!canUpdateNotice) {
         return NextResponse.json(
           { message: "Not authorized to update notices" },

@@ -44,9 +44,11 @@ export const AddForm = ({ handleClose, modal }) => {
         closeDate: getDefaultCloseDate(),
         // category is not used in API - left as is for now
         type: session?.user?.role === 'ACADEMIC_ADMIN' ? 'academics' : 
-              session?.user?.role === 'DEPT_ADMIN' ? 'department' : 'general',
+              session?.user?.role === 'DEPT_ADMIN' ? 'department' :
+              session?.user?.role === 'TENDER_NOTICE_ADMIN' ? 'tender' : 'general',
         category: session?.user?.role === 'ACADEMIC_ADMIN' ? 'academics' : 
-                 session?.user?.role === 'DEPT_ADMIN' ? 'department' : 'general',
+                 session?.user?.role === 'DEPT_ADMIN' ? 'department' :
+                 session?.user?.role === 'TENDER_NOTICE_ADMIN' ? 'tender' : 'general',
         important: false,
         department: session?.user?.role === 'DEPT_ADMIN' ? session.user.department : null,
         isDept: session?.user?.role === 'DEPT_ADMIN' ? 1 : 0,
@@ -150,6 +152,7 @@ export const AddForm = ({ handleClose, modal }) => {
         return [
             <MenuItem key="general" value="general">General</MenuItem>,
             <MenuItem key="department" value="department">Department</MenuItem>,
+            <MenuItem key="tender" value="tender">Tender</MenuItem>,
             ...Array.from(administrationList).map(([key, value]) => (
                 <MenuItem key={key} value={key}>{value}</MenuItem>
             ))
