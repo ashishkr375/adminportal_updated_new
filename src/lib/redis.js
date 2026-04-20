@@ -2,7 +2,7 @@ import Redis from 'ioredis';
 
 let redis;
 let redisDisabled = false;
-let lastCaller = null; // FIX: track who last called connectRedis
+let lastCaller = null;
 
 export function isRedisDisabled() {
   return redisDisabled;
@@ -51,8 +51,8 @@ export function getRedisClient() {
   return redis;
 }
 
-export async function connectRedis(callerPath = null) {  // FIX: accept caller info
-  if (callerPath) lastCaller = callerPath;               // FIX: store it
+export async function connectRedis(callerPath = null) {
+  if (callerPath) lastCaller = callerPath;
 
   if (redisDisabled) {
     console.log('⚠ Redis permanently disabled, skipping connection');
