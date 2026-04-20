@@ -1,7 +1,5 @@
-import { getRedisClient } from '@/lib/redis';
-import { connectRedis } from '@/lib/redis';
+import { connectRedis, isRedisDisabled } from '@/lib/redis';
 
-const redis = await connectRedis();
 // Cache TTL: 6 hours
 // Reason: profile data changes infrequently but should not be stale for too long
 const PROFILE_CACHE_TTL = 6 * 60 * 60; // 6 hours cache
@@ -19,8 +17,10 @@ function getCacheKey(email) {
  * Called after fetching from database
  */
 export async function cacheUserProfile(email, profileData) {
+  if (isRedisDisabled()) return false;
   try {
-    const redis = await connectRedis();
+    const redis = await connectRedis('profileCache:cacheUserProfile');
+    if (!redis) return false;
     const key = getCacheKey(email);
     
     // Store entire profile object
@@ -33,7 +33,7 @@ export async function cacheUserProfile(email, profileData) {
     console.log(`✓ Profile cached for ${email}`);
     return true;
   } catch (error) {
-    console.error('Error caching profile:', error);
+    console.error('Error caching profile:', error.message);
     return false;
   }
 }
@@ -43,21 +43,22 @@ export async function cacheUserProfile(email, profileData) {
  * Called FIRST before any database query
  */
 export async function getCachedUserProfile(email) {
+  if (isRedisDisabled()) return null;
   try {
-    const redis = await connectRedis();
+    const redis = await connectRedis('profileCache:getCachedUserProfile');
+    if (!redis) return null;
     const key = getCacheKey(email);
     
     const cached = await redis.get(key);
     
     if (cached) {
-      console.log(`✓ Profile cache hit for ${email} (1-2ms)`);
+      console.log(`✓ Profile cache hit for ${email}`);
       return JSON.parse(cached);
     }
-    
-    console.log(`✗ Profile cache miss for ${email} (will fetch from DB)`);
+    console.log(`✗ Profile cache miss for ${email}`);
     return null;
   } catch (error) {
-    console.error('Error retrieving cached profile:', error);
+    console.error('Error retrieving cached profile:', error.message);
     return null;
   }
 }
@@ -69,15 +70,17 @@ export async function getCachedUserProfile(email) {
  * Invalidate profile cache (when profile is updated)
  */
 export async function invalidateUserProfile(email) {
+  if (isRedisDisabled()) return false;
   try {
-    const redis = getRedisClient();
+    const redis = connectRedis();
+    if (!redis) return false;
     const key = getCacheKey(email);
     
     await redis.del(key);
     console.log(`✓ Profile cache invalidated for ${email}`);
     return true;
   } catch (error) {
-    console.error('Error invalidating profile:', error);
+    console.error('Error invalidating profile:', error.message);
     return false;
   }
 }
@@ -131,8 +134,10 @@ export async function invalidateProfileIfNeeded(type, params) {
  * Invalidate multiple profiles (when updating related data)
  */
 export async function invalidateMultipleProfiles(emails) {
+  if (isRedisDisabled()) return false;
   try {
-    const redis = await connectRedis();
+    const redis = await connectRedis('profileCache:invalidateMultipleProfiles');
+    if (!redis) return false;
     const keys = emails.map(email => getCacheKey(email));
     
     if (keys.length > 0) {
@@ -150,14 +155,16 @@ export async function invalidateMultipleProfiles(emails) {
  * Refresh cache TTL (extend expiry on access)
  */
 export async function refreshProfileCacheTTL(email) {
+  if (isRedisDisabled()) return false;
   try {
-    const redis = await connectRedis();
+    const redis = await connectRedis('profileCache:refreshProfileCacheTTL');
+    if (!redis) return false;
     const key = getCacheKey(email);
     
     await redis.expire(key, PROFILE_CACHE_TTL);
     return true;
   } catch (error) {
-    console.error('Error refreshing profile TTL:', error);
+    console.error('Error refreshing profile TTL:', error.message);
     return false;
   }
 }

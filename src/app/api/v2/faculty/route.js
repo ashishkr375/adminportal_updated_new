@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { depList } from '@/lib/const'
-import { connectRedis } from '@/lib/redis'
+import { connectRedis, isRedisDisabled } from '@/lib/redis'
 
 const allowedOrigins = [
   "https://adminportal-updated-new.vercel.app/",
@@ -28,6 +28,41 @@ function cacheKey(type) {
  *   ?type=officers     → officers only (name, image, designation, email + priority order)
  *   ?type=<dept-key>   → faculty for a specific department (uses depList keys)
  */
+// helper to get from cache safely
+async function getCache(redis, key) {
+  if (!redis) return null;
+  try {
+    const cached = await redis.get(key);
+    return cached ? JSON.parse(cached) : null;
+  } catch (err) {
+    console.error('[v2/faculty] Cache GET error:', err.message);
+    return null;
+  }
+}
+
+// helper to set cache safely
+async function setCache(redis, key, data) {
+  if (!redis) return;
+  try {
+    await redis.setex(key, CACHE_TTL, JSON.stringify(data));
+  } catch (err) {
+    console.error('[v2/faculty] Cache SET error:', err.message);
+  }
+}
+
+const cardCountSubqueries = `
+  (SELECT COUNT(*) FROM journal_papers      WHERE email = u.email) AS journal_papers_count,
+  (SELECT COUNT(*) FROM conference_papers   WHERE email = u.email) AS conference_papers_count,
+  (SELECT COUNT(*) FROM ipr                 WHERE email = u.email) AS ipr_count,
+  (SELECT COUNT(*) FROM sponsored_projects  WHERE email = u.email) AS sponsored_projects_count,
+  (SELECT COUNT(*) FROM phd_candidates      WHERE email = u.email) AS phd_candidates_count
+`
+
+const cardUserFields = `
+  u.id, u.name, u.image, u.designation, u.department,
+  u.email, u.ext_no, u.research_interest, u.academic_responsibility
+`
+
 export async function GET(request) {
   if (request.method === 'OPTIONS') {
     return new NextResponse(null, {
@@ -47,31 +82,17 @@ export async function GET(request) {
     ? { 'Access-Control-Allow-Origin': origin }
     : {}
 
-  // Only 5 count subqueries — exactly what the card needs
-  const cardCountSubqueries = `
-    (SELECT COUNT(*) FROM journal_papers      WHERE email = u.email) AS journal_papers_count,
-    (SELECT COUNT(*) FROM conference_papers   WHERE email = u.email) AS conference_papers_count,
-    (SELECT COUNT(*) FROM ipr                 WHERE email = u.email) AS ipr_count,
-    (SELECT COUNT(*) FROM sponsored_projects  WHERE email = u.email) AS sponsored_projects_count,
-    (SELECT COUNT(*) FROM phd_candidates      WHERE email = u.email) AS phd_candidates_count
-  `
-
-  // Core user fields needed by the card
-  const cardUserFields = `
-    u.id, u.name, u.image, u.designation, u.department,
-    u.email, u.ext_no, u.research_interest, u.academic_responsibility
-  `
-
   try {
-    const redis = await connectRedis()
+    // get redis client — will be null if disabled or unavailable
+    const redis = isRedisDisabled() ? null : await connectRedis('v2/faculty API');
+
     let results
 
     if (type === 'all') {
-      // Check cache first
-      const cached = await redis.get(cacheKey('all'))
+      const cached = await getCache(redis, cacheKey('all'));
       if (cached) {
         console.log('[v2/faculty] Cache hit: all')
-        return NextResponse.json(JSON.parse(cached), {
+        return NextResponse.json(cached, {
           headers: { ...corsHeaders, 'X-Cache': 'HIT' },
         })
       }
@@ -86,14 +107,14 @@ export async function GET(request) {
         ORDER BY u.name ASC`
       )
 
-      await redis.setex(cacheKey('all'), CACHE_TTL, JSON.stringify(results))
+      await setCache(redis, cacheKey('all'), results);
       console.log('[v2/faculty] Cached: all')
 
     } else if (type && depList.has(type)) {
-      const cached = await redis.get(cacheKey(type))
+      const cached = await getCache(redis, cacheKey(type));
       if (cached) {
         console.log(`[v2/faculty] Cache hit: ${type}`)
-        return NextResponse.json(JSON.parse(cached), {
+        return NextResponse.json(cached, {
           headers: { ...corsHeaders, 'X-Cache': 'HIT' },
         })
       }
@@ -109,14 +130,14 @@ export async function GET(request) {
         [depList.get(type)]
       )
 
-      await redis.setex(cacheKey(type), CACHE_TTL, JSON.stringify(results))
+      await setCache(redis, cacheKey(type), results);
       console.log(`[v2/faculty] Cached: ${type}`)
 
     } else if (type === 'others') {
-      const cached = await redis.get(cacheKey('others'))
+      const cached = await getCache(redis, cacheKey('others'));
       if (cached) {
         console.log('[v2/faculty] Cache hit: others')
-        return NextResponse.json(JSON.parse(cached), {
+        return NextResponse.json(cached, {
           headers: { ...corsHeaders, 'X-Cache': 'HIT' },
         })
       }
@@ -129,14 +150,14 @@ export async function GET(request) {
         ORDER BY u.name ASC`
       )
 
-      await redis.setex(cacheKey('others'), CACHE_TTL, JSON.stringify(results))
+      await setCache(redis, cacheKey('others'), results);
       console.log('[v2/faculty] Cached: others')
 
     } else if (type === 'officers') {
-      const cached = await redis.get(cacheKey('officers'))
+      const cached = await getCache(redis, cacheKey('officers'));
       if (cached) {
         console.log('[v2/faculty] Cache hit: officers')
-        return NextResponse.json(JSON.parse(cached), {
+        return NextResponse.json(cached, {
           headers: { ...corsHeaders, 'X-Cache': 'HIT' },
         })
       }
@@ -155,7 +176,7 @@ export async function GET(request) {
           u.name ASC`
       )
 
-      await redis.setex(cacheKey('officers'), CACHE_TTL, JSON.stringify(results))
+      await setCache(redis, cacheKey('officers'), results);
       console.log('[v2/faculty] Cached: officers')
 
     } else {

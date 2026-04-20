@@ -1,4 +1,4 @@
-import { connectRedis } from '@/lib/redis';
+import { connectRedis, isRedisDisabled } from '@/lib/redis';
 import { depList } from '@/lib/const';
 import { query } from '@/lib/db';
 
@@ -26,9 +26,10 @@ export const getDepartmentFromEmail = async (email) => {
 
 // GET cache (SAFE)
 export const getPublicationsCache = async (key) => {
+  if (isRedisDisabled()) return null;
   try {
-    const redis = await connectRedis();
-
+    const redis = await connectRedis('publications cache');
+    if (!redis) return null;
     const data = await redis.get(key);
     // return data ? JSON.parse(data) : null;
     if (!data){
@@ -51,9 +52,10 @@ export const getPublicationsCache = async (key) => {
 
 // SET cache
 export const setPublicationsCache = async (key, data) => {
+  if (isRedisDisabled()) return null;
   try {
-    const redis = await connectRedis();
-
+    const redis = await connectRedis('publications cache');
+    if (!redis) return null;
     await redis.set(key, JSON.stringify(data), 'EX', 21600);
     // await redis.sadd(`${PREFIX}:keys`, key);
     console.log(`Cache SET → ${key}`);
@@ -64,9 +66,10 @@ export const setPublicationsCache = async (key, data) => {
 
 // invalidate cache
 export const invalidatePublicationsCache = async (email=null) => {
+  if (isRedisDisabled()) return null;
   try {
-    const redis = await connectRedis();
-
+    const redis = await connectRedis('publications cache');
+    if (!redis) return null;
     const keys = [];
 
     if (!email) {

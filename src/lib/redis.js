@@ -1,8 +1,15 @@
 import Redis from 'ioredis';
 
 let redis;
+let redisDisabled = false;
+let lastCaller = null; // FIX: track who last called connectRedis
+
+export function isRedisDisabled() {
+  return redisDisabled;
+}
 
 export function getRedisClient() {
+  if (redisDisabled) return null;
   if (!redis) {
     redis = new Redis({
       host: process.env.REDIS_HOST || 'localhost',
@@ -10,6 +17,12 @@ export function getRedisClient() {
       password: process.env.REDIS_PASSWORD || undefined,
       db: process.env.REDIS_DB || 0,
       retryStrategy: (times) => {
+        if (times >= 3) {
+          console.log(`Redis retry limit reached. Last API call: ${lastCaller || 'unknown'}. Permanently disabling Redis, all calls will go directly to DB.`);
+          redisDisabled = true;
+          redis = null;
+          return null;
+        }
         const delay = Math.min(times * 50, 2000);
         return delay;
       },
@@ -17,9 +30,9 @@ export function getRedisClient() {
       enableOfflineQueue: true,
       lazyConnect: true,
     });
-    // Event listeners for logging connection status
+
     redis.on('error', (err) => {
-      console.error('Redis Client Error', err);
+      console.error('Redis Client Error', err.message);
     });
 
     redis.on('connect', () => {
@@ -37,20 +50,33 @@ export function getRedisClient() {
 
   return redis;
 }
-// Connect immediately to warm up the connection pool
-export async function connectRedis() {
+
+export async function connectRedis(callerPath = null) {  // FIX: accept caller info
+  if (callerPath) lastCaller = callerPath;               // FIX: store it
+
+  if (redisDisabled) {
+    console.log('⚠ Redis permanently disabled, skipping connection');
+    return null;
+  }
+
   const client = getRedisClient();
-  // If already connected, return immediately
+  if (!client) return null;
+
   if (client.status === 'ready') return client;
-  // If connecting, wait for ready event
+
   if (client.status === 'connecting') {
     return new Promise((resolve) => {
       client.once('ready', () => resolve(client));
     });
   }
-  // If disconnected, attempt to connect
-  if (client.status === 'end') {
-    await client.connect();
+
+  if (client.status === 'wait' || client.status === 'end') {
+    try {
+      await client.connect();
+    } catch (err) {
+      console.log('Redis connection failed, continuing without cache');
+      return null;
+    }
   }
 
   return client;

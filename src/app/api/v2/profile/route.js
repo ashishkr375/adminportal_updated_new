@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { query, batchQuery } from '@/lib/db'
-import { connectRedis } from '@/lib/redis'
+import { connectRedis, isRedisDisabled } from '@/lib/redis'
 
 const allowedOrigins = [
   'https://adminportal-updated-new.vercel.app/',
@@ -29,7 +29,26 @@ export async function OPTIONS() {
     },
   })
 }
+async function getCache(redis, key) {
+  if (!redis) return null;
+  try {
+    const cached = await redis.get(key);
+    return cached ? JSON.parse(cached) : null;
+  } catch (err) {
+    console.error('[v2/profile] Cache GET error:', err.message);
+    return null;
+  }
+}
 
+// helper to set cache safely
+async function setCache(redis, key, TTL, data) {
+  if (!redis) return;
+  try {
+    await redis.setex(key, TTL, JSON.stringify(data));
+  } catch (err) {
+    console.error('[v2/profile] Cache SET error:', err.message);
+  }
+}
 const SECTION_QUERIES = {
   work_experience:                 [{ key: 'work_experience',                 sql: 'SELECT * FROM work_experience WHERE email = ?' }],
   education:                       [{ key: 'education',                       sql: 'SELECT * FROM education WHERE email = ?' }],
@@ -131,13 +150,15 @@ export async function GET(request) {
     return NextResponse.json({ error: 'email param required' }, { status: 400, headers: cors })
   }
 
-  const redis = await connectRedis()
+  // get redis client — will be null if disabled or unavailable
+    const redis = isRedisDisabled() ? null : await connectRedis('v2/faculty API');
+
 
   // ── SUMMARY ────────────────────────────────────────────────────────────────
   if (section === 'summary') {
-    const cached = await redis.get(summaryKey(email))
+    const cached = await getCache(redis, summaryKey(email))
     if (cached) {
-      return NextResponse.json(JSON.parse(cached), { headers: { ...cors, 'X-Cache': 'HIT' } })
+      return NextResponse.json(cached, { headers: { ...cors, 'X-Cache': 'HIT' } })
     }
 
     const profileResult = await query(
@@ -181,15 +202,15 @@ export async function GET(request) {
     ])
 
     const summary = { profile: profileResult[0], about_me: aboutMe, counts: counts[0] }
-    await redis.setex(summaryKey(email), SUMMARY_TTL, JSON.stringify(summary))
+    await setCache(redis, summaryKey(email), SUMMARY_TTL, summary);
     return NextResponse.json(summary, { headers: { ...cors, 'X-Cache': 'MISS' } })
   }
 
   // ── SECTION DATA ───────────────────────────────────────────────────────────
   if (section && SECTION_QUERIES[section]) {
-    const cached = await redis.get(sectionKey(email, section))
+    const cached = await getCache(redis, sectionKey(email, section))
     if (cached) {
-      return NextResponse.json(JSON.parse(cached), { headers: { ...cors, 'X-Cache': 'HIT' } })
+      return NextResponse.json(cached, { headers: { ...cors, 'X-Cache': 'HIT' } })
     }
 
     const queries = SECTION_QUERIES[section]
@@ -209,7 +230,7 @@ export async function GET(request) {
       data[q.key] = rows
     })
 
-    await redis.setex(sectionKey(email, section), SECTION_TTL, JSON.stringify(data))
+    await setCache(redis, sectionKey(email, section), SECTION_TTL, data);
     return NextResponse.json(data, { headers: { ...cors, 'X-Cache': 'MISS' } })
   }
 
